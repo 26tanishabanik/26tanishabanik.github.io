@@ -1,12 +1,17 @@
 title: "Tanisha Banik"
 description: "Notes on LLM agents and how they decide"
+author:
+  name: "Tanisha Banik"
 url: "https://26tanishabanik.github.io"
 baseurl: ""
-theme: minima
+lang: en
 markdown: kramdown
 kramdown:
   input: GFM
   syntax_highlighter: rouge
+  footnote_backlink: "&#8617;&#xFE0E;"
+plugins:
+  - jekyll-seo-tag
 permalink: /blog/:title/
 timezone: Asia/Kolkata
-exclude: [scripts, Gemfile, Gemfile.lock]
+exclude: [scripts, Gemfile, Gemfile.lock, .preview]

@@ -1,0 +1,16 @@
+---
+layout: default
+---
+<section class="home">
+  <h1 class="home-title">{{ site.title }}</h1>
+  <p class="home-intro">{{ site.description }}</p>
+  <ol class="post-list">
+    {%- for post in site.posts %}
+    <li>
+      <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%-d %B %Y" }}</time>
+      <a class="post-link" href="{{ post.url | relative_url }}">{{ post.title }}</a>
+      <p>{{ post.subtitle | default: post.excerpt | strip_html | truncatewords: 40 }}</p>
+    </li>
+    {%- endfor %}
+  </ol>
+</section>

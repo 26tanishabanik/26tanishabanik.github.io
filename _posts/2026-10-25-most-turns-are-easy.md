@@ -119,24 +119,29 @@ The model was sure about mood and hand-off and acted on both. It was unsure whet
 ## What I learned
 
 ### Track confidence as closely as accuracy
+{:.no_toc}
 
 Two versions with the same accuracy can behave very differently in a voice agent, depending on how often each is wrong while sure. Confident mistakes caught problems the accuracy numbers did not show at all.
 
 ### Learn from earlier models, not from their certainty
+{:.no_toc}
 
 Each version also learns from the answers of earlier versions, a standard technique called [distillation](https://arxiv.org/abs/1503.02531) in which the earlier models act as teachers. Which teachers to use turned out to matter a lot, because a teacher that is very sure of itself passes that certainty on, including on the cases it gets wrong. Two training runs on the same data, one learning from more confident earlier versions (average top confidence 0.88) and one from calmer ones (0.78), made the difference clear.
 
 ![Wrong answers given with at least 0.95 confidence, on 1,011 questions about business rules that never appear in training. The calmer teachers gave fewer confident mistakes and slightly higher accuracy.]({{ site.baseurl }}/assets/img/decision-teachers.png)
 
 ### Confidence needs enough examples to be tuned
+{:.no_toc}
 
 A model's raw confidence is rarely exactly right. If its answers at 0.9 confidence turn out right only 80% of the time, the scores need to be scaled down to match. That adjustment is learned after training, from examples the model has not trained on, and it is only as good as the number of examples behind it. A kind of question now gets its own adjustment only when it has at least 150 such examples; otherwise it shares one with similar questions. With that rule, on a fresh set of 1,080 urgency questions the model was right 89.3% of the time and made no confident mistakes.
 
 ### Set the hand-off rules on the calls you will actually serve
+{:.no_toc}
 
 Tuning which questions go to the LLM on calls from the training flows still raised overall accuracy (to 94.3%), but made unseen business rules worse (94.0% to 87.5%). Tuned on calls like the ones being served, it reached about 95% with the LLM on about 22% of turns, and no kind of question got meaningfully worse. A small labelled sample of a team's own calls is worth keeping for exactly this step.
 
 ### Live calls show what test sets cannot
+{:.no_toc}
 
 Calling the agent myself turned up four situations the test sets did not cover. Callers often say more than the bot asked: in the kajal call, the colour ordered and the colour received came in one sentence, while the model had been trained only to answer the question the bot actually asked. Callers also say things that are neither answers nor off-topic, such as "hello, can you hear me?" or "one minute", and each needs a different response. Routing a caller's first sentence to the right service works best when "something else" is an option the model has properly learned, not a vague fallback. And long descriptions of the options need to be read in full. These four findings became the training data for the next round.
 

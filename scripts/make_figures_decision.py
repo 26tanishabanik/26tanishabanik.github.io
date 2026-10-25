@@ -141,7 +141,7 @@ fig.savefig(f"{OUT}/decision-teachers.png", dpi=200)
 
 # 8. current model vs next version on the patterns found in live calls (held-out tests)
 pats = ["Kind of non-answer", "Routing to the right service", '"Yes, but…" replies', "Answered every part?", "Details offered unasked"]
-cur, nxt = [50.5, 78.7, 94.3, 84.5, 93.3], [97.3, 92.5, 97.1, 89.4, 95.5]
+cur, nxt = [50.5, 77.8, 94.3, 84.5, 93.3], [97.3, 84.1, 97.1, 89.4, 95.5]
 fig, ax = plt.subplots(figsize=(8.2, 4.3))
 ys = [i * 1.0 for i in range(len(pats))][::-1]
 h = 0.36

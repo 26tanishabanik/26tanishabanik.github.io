@@ -142,13 +142,13 @@ a:hover { color: var(--accent); text-decoration-color: var(--accent); }
 .post-body { grid-column: 2; padding: 0 var(--gutter); min-width: 0; }
 .toc-rail { display: none; }
 
-@media (min-width: 1200px) {
+@media (min-width: 1320px) {
   .toc-rail {
     display: block;
     grid-column: 1;
     justify-self: end;
     width: 220px;
-    margin-right: 36px;
+    margin-right: 66px;
     position: sticky;
     top: 32px;
     align-self: start;

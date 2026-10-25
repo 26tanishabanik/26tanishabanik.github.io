@@ -149,7 +149,7 @@ Calling the agent myself turned up four situations the test sets did not cover. 
 
 The next version was trained on those four patterns, and it improved on all of them.
 
-![Accuracy on held-out tests. Routing is for services seen in training; details offered unasked are measured in domains never seen in training. Caller replies stayed at 96.3%.]({{ site.baseurl }}/assets/img/decision-nextround.png)
+![Accuracy on held-out synthetic test calls. Routing covers all test services (on services seen in training it went from 78.7% to 92.5%; on services never seen, from 77.6% to 82.0%). The current model was never trained to tell kinds of non-answer apart, so its 50.5% is a starting point rather than a like-for-like score. Details offered unasked are measured in domains never seen in training. Caller replies stayed at 96.3%.]({{ site.baseurl }}/assets/img/decision-nextround.png)
 
 The jump on non-answers is the largest single gain in the project: the model now tells apart a line check ("can you hear me?"), a request to repeat, a request to wait, a side question and an unclear reply 97.3% of the time.
 

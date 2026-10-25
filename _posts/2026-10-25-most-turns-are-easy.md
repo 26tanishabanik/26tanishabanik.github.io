@@ -50,7 +50,7 @@ Besides the right answer, the model is trained on pairs of near-identical replie
 
 ## How I tested it
 
-Four call flows (insurance claims, travel bookings, support for a children's learning app and vehicle servicing) never appear in training, and neither do several families of business rules. I read Hindi, Bengali and Assamese, so I also kept Assamese out of training entirely. That gives a test on a language the model has never seen in a call, and one whose mistakes I can read for myself.[^assamese]
+Four call flows (insurance claims, travel bookings, support for a children's learning app and vehicle servicing) never appear in training, and neither do several families of business rules. I know Hindi, Bengali and Assamese, so I also kept Assamese out of training entirely. That gives a test on a language the model has never seen in a call, and one whose mistakes I can check myself.[^assamese]
 
 Alongside accuracy I tracked **confident mistakes**: wrong answers given with at least 0.95 confidence. In a system that acts on high confidence, these are the errors that are most easily overlooked, so every version was checked to keep them low.
 

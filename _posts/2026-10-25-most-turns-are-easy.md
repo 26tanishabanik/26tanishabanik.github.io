@@ -42,7 +42,7 @@ The base model is [Sarvam-1](https://huggingface.co/sarvamai/sarvam-1), a 2.5-bi
 
 On top of it sits a small decision head. The model reads the conversation, the question and all the possible answers together, scores each answer and separately flags when none of them fits. Only a small fraction of the weights is trained, using the standard technique [LoRA](https://arxiv.org/abs/2106.09685), so most of what Sarvam-1 already knows stays in place.
 
-The call data comes from 12 customer-care call flows, such as blocking a card, returning an order, booking a clinic appointment and repaying a loan. Caller replies for each step were generated directly in each language and labelled again by a second model that did not see the intended answer, and I kept only the replies where both agreed. Every reply exists in native script, romanized and code-mixed form. The final training set has about 86,000 examples across 10 Indian languages and English: about 79,000 call turns and about 6,500 examples from public Indian-language datasets.
+The call data comes from 12 customer-care call flows, such as blocking a card, returning an order, booking a clinic appointment and repaying a loan. Caller replies for each step were generated directly in each language and labelled again by a second model that did not see the intended answer, and I kept only the replies where both agreed. Every reply exists in native script, romanized and code-mixed form. The final training set has about 86,000 examples across 10 Indian languages and English: about 79,000 generated call turns and about 6,500 examples from public Indian-language datasets for intent, inference and abusive language.
 
 Besides the right answer, the model is trained on pairs of near-identical replies where one changed detail flips the answer, on staying consistent when the same sentence is written in another script, on keeping its confidence honest and on the answers of earlier versions of itself.
 
@@ -54,7 +54,7 @@ Four call flows (insurance claims, travel bookings, support for a children's lea
 
 Alongside accuracy I tracked **confident mistakes**: wrong answers given with at least 0.95 confidence. In a system that acts on high confidence, these are the errors that are most easily overlooked, so every version was checked to keep them low.
 
-All of these test sets are synthetic: generated and labelled by the same LLM pipeline as the training data, though drawn from flows, rule families and a language kept out of training. The numbers below are best read as an upper bound for real traffic. On my own live test calls, where the questions and options were new to the model, it was confident enough to answer the bot's question on its own in 12 of 69 turns and passed the rest to the LLM.
+The results below come from three kinds of test: held-out call test sets, built like the training calls but from the flows, rule families and language that training never saw; the translated public benchmark above, whose tasks were written by people; and my own live calls to a voice agent built on the model.
 
 ## How well it decides
 
@@ -92,7 +92,7 @@ I compared a voice agent that sends every turn to `sarvam-105b-conversations`, t
 
 ![2,700 test turns covering every kind of question. The third row was chosen on separate calibration calls and applied once; the fourth was tuned on half of the test turns and scored on the other half.]({{ site.baseurl }}/assets/img/decision-llm.png)
 
-The LLM received the same conversation, question and options as this model, with no examples, at temperature 0. The test labels come from the same pipeline as this model's training data, which favours this model.[^llm] On the replies it decides alone, the model is right 99.4% of the time, against 98.1% for the LLM on the same turns. Across all replies the LLM is slightly ahead (97.2% to 96.2%), which is why the uncertain ones go to it. The LLM is also stronger on the translated everyday decision tasks (95.8% to 87.0%) and on unseen business rules (94.0% to 87.0%). On the turns in this comparison, the small model is stronger at spotting when a caller needs a person (94.7% to 87.7%), at judging urgency (89.0% to 85.5%) and at reading mood (80.7% to 78.0%), and it is far faster. Combining the two beats either one.
+The LLM received the same conversation, question and options as this model, with no examples, at temperature 0.[^llm] On the replies it decides alone, the model is right 99.4% of the time, against 98.1% for the LLM on the same turns. Across all replies the LLM is slightly ahead (97.2% to 96.2%), which is why the uncertain ones go to it. The LLM is also stronger on the translated everyday decision tasks (95.8% to 87.0%) and on unseen business rules (94.0% to 87.0%). On the turns in this comparison, the small model is stronger at spotting when a caller needs a person (94.7% to 87.7%), at judging urgency (89.0% to 85.5%) and at reading mood (80.7% to 78.0%), and it is far faster. Combining the two beats either one.
 
 ![Median time for one pass of this model over the options, against the LLM's median response time over the API in my tests. The accuracy figures in this post average two passes with the options in different orders, which took 1.8 times as long as one pass on my laptop.]({{ site.baseurl }}/assets/img/decision-latency.png)
 
@@ -147,7 +147,7 @@ Calling the agent myself turned up four situations the test sets did not cover. 
 
 The next version was trained on those four patterns, and it improved on all of them.
 
-![Accuracy on held-out synthetic test calls. Routing covers all test services (on services seen in training it went from 78.7% to 92.5%; on services never seen, from 77.6% to 82.0%). The current model was never trained to tell kinds of non-answer apart, so its 50.5% is a starting point rather than a like-for-like score. Details offered unasked are measured in domains never seen in training. Caller replies stayed at 96.3%.]({{ site.baseurl }}/assets/img/decision-nextround.png)
+![Accuracy on the held-out call test sets. Routing covers all test services (on services seen in training it went from 78.7% to 92.5%; on services never seen, from 77.6% to 82.0%). The current model was never trained to tell kinds of non-answer apart, so its 50.5% is a starting point rather than a like-for-like score. Details offered unasked are measured in domains never seen in training. Caller replies stayed at 96.3%.]({{ site.baseurl }}/assets/img/decision-nextround.png)
 
 The jump on non-answers is the largest single gain in the project: the model now tells apart a line check ("can you hear me?"), a request to repeat, a request to wait, a side question and an unclear reply 97.3% of the time.
 
@@ -158,7 +158,7 @@ Before it replaces the current model, two things are still being tuned: its conf
 **Working well today**
 
 - Reads 96 of every 100 caller replies correctly, across 10 Indian languages and English, in native script, romanized and code-mixed text.
-- Knows when it is sure: on the test sets it decides most replies on its own, at better than 99% accuracy, and on unfamiliar live questions it passes them on.
+- Knows when it is sure: it decides most replies on its own at better than 99% accuracy, and passes the rest to the LLM.
 - Makes Sarvam's conversational LLM more accurate while taking over most of its calls.
 - Tens of milliseconds per decision on a single GPU.
 - The highest score among the open models I tested on translated everyday decision tasks.

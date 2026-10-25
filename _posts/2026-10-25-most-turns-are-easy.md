@@ -42,7 +42,7 @@ The base model is [Sarvam-1](https://huggingface.co/sarvamai/sarvam-1), a 2.5-bi
 
 On top of it sits a small decision head. The model reads the conversation, the question and all the possible answers together, scores each answer and separately flags when none of them fits. Only a small fraction of the weights is trained, using the standard technique [LoRA](https://arxiv.org/abs/2106.09685), so most of what Sarvam-1 already knows stays in place.
 
-The call data comes from 12 customer-care call flows, such as blocking a card, returning an order, booking a clinic appointment and repaying a loan. Caller replies for each step were generated directly in each language and labelled again by a second model that did not see the intended answer, and I kept only the replies where both agreed. Every reply exists in native script, romanized and code-mixed form. The final training set has about 86,000 examples across 10 Indian languages and English: about 79,000 generated call turns and about 6,500 examples from public Indian-language datasets for intent, inference and abusive language.
+The call data comes from 12 customer-care call flows, such as blocking a card, returning an order, booking a clinic appointment and repaying a loan. Caller replies for each step were generated directly in each language and labelled again by a second model that did not see the intended answer, and I kept only the replies where both agreed. Every Indian-language reply exists in native script, romanized and code-mixed form. The final training set has about 86,000 examples across 10 Indian languages and English: about 79,000 generated call turns and about 6,500 examples from public Indian-language datasets for intent, inference and abusive language.
 
 Besides the right answer, the model is trained on pairs of near-identical replies where one changed detail flips the answer, on staying consistent when the same sentence is written in another script, on keeping its confidence honest and on the answers of earlier versions of itself.
 
@@ -54,7 +54,7 @@ Four call flows (insurance claims, travel bookings, support for a children's lea
 
 Alongside accuracy I tracked **confident mistakes**: wrong answers given with at least 0.95 confidence. In a system that acts on high confidence, these are the errors that are most easily overlooked, so every version was checked to keep them low.
 
-The results below come from three kinds of test: held-out call test sets, built like the training calls but from the flows, rule families and language that training never saw; the translated public benchmark above, whose tasks were written by people; and my own live calls to a voice agent built on the model.
+The results below come from three kinds of test: held-out call test sets, built like the training calls but from the flows, rule families and language that training never saw; the translated public benchmark above, from outside this project; and my own live calls to a voice agent built on the model.
 
 ## How well it decides
 
@@ -62,7 +62,7 @@ The most common decision in a call is whether the caller's reply answers the bot
 
 ![About 575 test replies per Indian language and 179 in English. The axis starts at 80% so the differences between languages are visible.]({{ site.baseurl }}/assets/img/decision-languages.png)
 
-How a reply is written matters more than its language. Native-script and code-mixed replies are both read correctly 97.9% of the time, while Hindi typed in English letters ("haan ji, bhej dijiye") is harder at 93.3%, because the same word can be spelled in many ways. Assamese still reaches 89.2%, probably helped by its closeness to Bengali, which uses almost the same script.
+How a reply is written matters as much as its language. Native-script and code-mixed replies are both read correctly 97.9% of the time, while Hindi typed in English letters ("haan ji, bhej dijiye") is harder at 93.3%, since romanized text has no fixed spelling. Assamese still reaches 89.2%, probably helped by its closeness to Bengali, which uses almost the same script.
 
 The other decisions a voice agent needs:
 
@@ -76,7 +76,7 @@ The other decisions a voice agent needs:
 | How urgent is the problem? (fresh set, new settings) | 1,080 | 89.3% |
 | Does the caller meet a business rule never seen in training? | 1,011 | 82.4% |
 
-The first three are close to solved. The last two need reasoning about situations the model has not seen, and they are the ones the system hands to the LLM most often.
+The first three are close to solved. The last two need reasoning about situations the model has not seen.
 
 ## Knowing when it is sure
 
@@ -84,7 +84,7 @@ A voice agent also needs to know when to trust an answer. For each kind of quest
 
 ![6,502 test replies, sorted from most to least confident. On the 4,289 replies from unseen flows alone, the same cutoff decides 82% of replies at 99.3% accuracy.]({{ site.baseurl }}/assets/img/decision-coverage.png)
 
-Five kinds of question earned a proven cutoff: caller replies, short replies read in context, complaints, off-topic turns and mood. The model decides about 90% of complaint turns alone, but only about 30% of mood turns. Urgency and business rules have no cutoff yet, so those are always confirmed with the LLM or a person.
+Five kinds of question earned a proven cutoff: caller replies, short replies read in context, complaints, off-topic turns and mood. The model decides about 90% of complaint turns alone, but only about 30% of mood turns. Urgency and business rules have no 99% cutoff yet, so under that strict rule they always go to the LLM or a person.
 
 ## Next to Sarvam's LLM
 
@@ -92,7 +92,7 @@ I compared a voice agent that sends every turn to `sarvam-105b-conversations`, t
 
 ![2,700 test turns covering every kind of question. The third row was chosen on separate calibration calls and applied once; the fourth was tuned on half of the test turns and scored on the other half.]({{ site.baseurl }}/assets/img/decision-llm.png)
 
-The LLM received the same conversation, question and options as this model, with no examples, at temperature 0.[^llm] On the replies it decides alone, the model is right 99.4% of the time, against 98.1% for the LLM on the same turns. Across all replies the LLM is slightly ahead (97.2% to 96.2%), which is why the uncertain ones go to it. The LLM is also stronger on the translated everyday decision tasks (95.8% to 87.0%) and on unseen business rules (94.0% to 87.0%). On the turns in this comparison, the small model is stronger at spotting when a caller needs a person (94.7% to 87.7%), at judging urgency (89.0% to 85.5%) and at reading mood (80.7% to 78.0%), and it is far faster. Combining the two beats either one.
+The second row uses only the strict 99% cutoffs. The third picks, for each kind of question, whichever arrangement was most accurate on separate calibration calls: the model alone, the LLM alone, or the model with the LLM taking the turns below a confidence threshold. That lets the model take more turns, including urgency and business rules, where the threshold is set for accuracy instead of for 99%. The LLM received the same conversation, question and options as this model, with no examples, at temperature 0.[^llm] On the replies it decides alone, the model is right 99.4% of the time, against 98.1% for the LLM on the same turns. Across all replies the LLM is slightly ahead (97.2% to 96.2%), which is why the uncertain ones go to it. The LLM is also stronger on the translated everyday decision tasks (95.8% to 87.0%) and on unseen business rules (94.0% to 87.0%). On the turns in this comparison, the small model is stronger at spotting when a caller needs a person (94.7% to 87.7%), at judging urgency (89.0% to 85.5%) and at reading mood (80.7% to 78.0%), and it is far faster. Combining the two beats either one.
 
 ![Median time for one pass of this model over the options, against the LLM's median response time over the API in my tests. The accuracy figures in this post average two passes with the options in different orders, which took 1.8 times as long as one pass on my laptop.]({{ site.baseurl }}/assets/img/decision-latency.png)
 
@@ -100,7 +100,7 @@ The LLM received the same conversation, question and options as this model, with
 
 I also built a generic customer-care voice agent around the model and called it myself: a shopping-app returns desk, a bank card line and a loan repayment line, with the agent working out which one the caller needs. Sarvam's speech-to-text detects the language, this model makes the quick decisions, the use case's written policy decides what is allowed, Sarvam's LLM writes the reply and Sarvam's text-to-speech reads it out. Here is one turn, with the decisions as the agent logged them.
 
-> मैंने एक काजल ऑर्डर किया था पर वो नीले रंग का था, पर ये तो काला है। मैंने ये ऑर्डर नहीं किया था।
+> मैंने एक काजल ऑर्डर किया था पर वो नीले रंग का था पर ये तो काला है। मैंने ये ऑर्डर नहीं किया था।
 >
 > *Maine ek kajal order kiya tha par vo neele rang ka tha, par ye to kaala hai. Maine ye order nahi kiya tha.*
 > (I ordered a kajal and it was blue, but this one is black. This is not what I ordered.)
@@ -110,9 +110,9 @@ I also built a generic customer-care voice agent around the model and called it 
 | Should a person take over? | no | 0.96 | this model |
 | Caller's mood | calm | 0.94 | this model |
 | What does the caller want? | model's best guess: return | 0.55 | LLM, which chose exchange |
-| Which item, and what went wrong? | kajal, wrong colour | n/a | LLM |
+| Which item, and what went wrong? | kajal, wrong item | n/a | LLM |
 
-The model was sure about mood and hand-off and acted on both. It was unsure whether the caller wanted a refund or a replacement, which the sentence really does leave open, so the agent passed that question on, and the bot offered to swap the black kajal for the blue one.
+The model was sure about mood and hand-off and acted on both. It was unsure whether the caller wanted a return or an exchange, which the sentence really does leave open, so the agent passed that question on, and the bot offered to swap the black kajal for the blue one.
 
 ## What I learned
 
@@ -124,7 +124,7 @@ Two versions with the same accuracy can behave very differently in a voice agent
 ### Learn from earlier models, not from their certainty
 {:.no_toc}
 
-Each version also learns from the answers of earlier versions, through [distillation](https://arxiv.org/abs/1503.02531), with the earlier models as teachers. Which teachers to use turned out to matter a lot, because a teacher that is very sure of itself passes that certainty on, including on the cases it gets wrong. Two training runs on the same data, one learning from more confident earlier versions (average top confidence 0.88) and one from calmer ones (0.78), made the difference clear.
+Each version also learns from the answers of earlier versions, through [distillation](https://arxiv.org/abs/1503.02531), with the earlier models as teachers. Which teachers to use turned out to matter a lot, because a teacher that is very sure of itself can pass that certainty on, including on the cases it gets wrong. Two training runs on the same data, with different teachers and starting points, show the effect: one learned from more confident earlier versions (average top confidence 0.88 on these questions) and one from calmer ones (0.78).
 
 ![Wrong answers given with at least 0.95 confidence, on 1,011 questions about business rules that never appear in training. The calmer teachers gave fewer confident mistakes and slightly higher accuracy.]({{ site.baseurl }}/assets/img/decision-teachers.png)
 
@@ -151,7 +151,7 @@ The next version was trained on those four patterns, and it improved on all of t
 
 The jump on non-answers is the largest single gain in the project: the model now tells apart a line check ("can you hear me?"), a request to repeat, a request to wait, a side question and an unclear reply 97.3% of the time.
 
-Before it replaces the current model, two things are still being tuned: its confidence on routing, and the hand-off decision, which moved from 94.3% to 93.1%, likely because the new "not mentioned yet" labels overlap with the older question of whether a caller has given every detail.
+Before it replaces the current model, its confidence on routing and on whether a caller has given every detail needs to come down, and the hand-off decision, which moved from 94.3% to 93.1%, needs to recover.
 
 ## Where it stands
 
@@ -160,7 +160,7 @@ Before it replaces the current model, two things are still being tuned: its conf
 - Reads 96 of every 100 caller replies correctly, across 10 Indian languages and English, in native script, romanized and code-mixed text.
 - Knows when it is sure: it decides most replies on its own at better than 99% accuracy, and passes the rest to the LLM.
 - Makes Sarvam's conversational LLM more accurate while taking over most of its calls.
-- Tens of milliseconds per decision on a single GPU.
+- A few tens of milliseconds per pass of the model on a single GPU.
 - The highest score among the open models I tested on translated everyday decision tasks.
 
 **Still growing**

@@ -36,13 +36,9 @@ That only works if a confidence of 0.99 actually means "right 99 times in 100". 
 
 ## Where existing models stand
 
-Before building anything, I tested released decision models, hosted and open, on two public benchmarks in English and in Sarvam's 10 Indian languages. [Belebele](https://arxiv.org/abs/2308.16884) checks reading comprehension and [IndicXNLI](https://arxiv.org/abs/2204.08776) checks whether one sentence follows from another. Results varied a lot from model to model and from language to language.[^bench]
+Before building anything, I measured how released decision models, hosted and open, handle Indian languages. I used two public benchmarks, [Belebele](https://arxiv.org/abs/2308.16884) for reading comprehension and [IndicXNLI](https://arxiv.org/abs/2204.08776) for whether one sentence follows from another, and JevBench, a public set of 120 everyday decision tasks (checking an answer against a written policy, rating how complete an answer is, sorting things into levels) that I translated into 11 Indian languages. Results varied a lot from model to model and from language to language, which made it worth asking how far an open model built for Indian-language calls could go.[^bench]
 
-Benchmarks are a long way from a phone call, so I also took JevBench, a public set of 120 everyday decision tasks (checking an answer against a written policy, rating how complete an answer is, sorting things into levels), and translated the input text into 11 Indian languages. The chart below includes the model this post is about.
-
-![The same 1,295 items for every model: the 120 tasks in native script in each of the 11 languages. Each released model was called zero-shot through its own package or API.]({{ site.baseurl }}/assets/img/decision-usecases.png)
-
-A translation was kept only if the right answer did not change, and the questions and options stay in English. Laya was run through its multilingual checkpoint, which its own router picks for non-English text. JevBench is published by the makers of Jev, and none of these tasks were part of my model's training.
+The model this post is about was later run on the same translated tasks without training on any of them, and scored 85.5%.
 
 ## Building it on Sarvam-1
 
@@ -177,7 +173,7 @@ There are two directions I am most interested in. The first is teaching the mode
 
 I started out asking how well decision models handle Indian languages, and whether a 2.5-billion-parameter open model built on Sarvam-1 could do this job well for phone calls. The more useful result for me was a different one. Most turns in a call are easy, and a small model can handle them faster and more accurately than a large one, as long as it is honest about the turns that are not easy. Teaching the model to tell those apart mattered more than making it a little more accurate.
 
-[^bench]: 200 items per language and benchmark, comparing each model's Indian-language average with its English score. An LLM judge flagged machine-translation errors and I removed those items before comparing.
+[^bench]: For Belebele and IndicXNLI, 200 items per language, comparing each model's Indian-language average with its English score after removing items whose machine translation was broken. For JevBench, the same 1,295 native-script items for every model, keeping a translation only if the right answer did not change; the questions and options stay in English, and each released model was called zero-shot through its own package or API.
 [^assamese]: Assamese call turns never appear in training. A short Assamese word list is part of the short-replies-in-context task, and Sarvam-1 itself was not trained on Assamese.
 [^cutoff]: "At least 99%" means the 95% lower confidence bound (Clopper–Pearson) on a separate calibration set is at or above 99%. About 300 correct answers in a row are needed before that bound can reach 99%, which is why cutoffs are set per kind of question and not per step of a call.
 [^llm]: Every answer the LLM gave was valid. The test labels come from the same LLM-written, LLM-checked process as the training data, which may favour a model trained on that data. With hand-off rules chosen on calibration calls, 98 turns were gained and 59 lost against the LLM alone (p = 0.002). The "tuned on calls like the test calls" row was chosen on half of the test turns and scored on the other half, then swapped; over three random splits it gave 94.7% to 95.0% accuracy with the LLM on 21% to 23% of turns.

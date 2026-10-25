@@ -30,16 +30,6 @@ def hbars(ax, labels, vals, colors, fmt, xmax):
     ax.set_xlim(0, xmax)
 
 
-# 1. translated everyday decision tasks (JevBench), 1,295 native-script items in 11 Indian languages
-fig, ax = plt.subplots(figsize=(8.2, 3.3))
-hbars(ax, ["Jev (hosted)", "This model (open)", "Yama (open)", "Laya, multilingual (open)", "Vega (open)"],
-      [98.1, 85.5, 80.3, 50.3, 45.2], [S1, S2, GREY, GREY, GREY], lambda v: f"{v:.1f}%", 108)
-ax.set_xticks([0, 25, 50, 75, 100], ["0%", "25%", "50%", "75%", "100%"])
-ax.set_title("Everyday decision tasks in Indian languages: accuracy", loc="left", fontsize=12, color=INK)
-style(ax)
-fig.tight_layout()
-fig.savefig(f"{OUT}/decision-usecases.png", dpi=200)
-
 # 2. where the decision model sits in a voice agent
 fig, ax = plt.subplots(figsize=(8.6, 3.2))
 ax.set_xlim(0, 100); ax.set_ylim(0, 40); ax.axis("off")

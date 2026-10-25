@@ -7,7 +7,7 @@ date: 2026-10-25
 
 When a caller says "haan ji" after "Shall I start the return?", there is not much to work out. It means yes. A surprising share of a customer-care call is like this. On 6,502 test replies, a model with 2.5 billion parameters was confident enough to decide 84 of every 100 on its own, and it was right on 99.5% of those.
 
-If a voice agent sends every turn to a large language model, each of those easy turns costs a few hundred milliseconds and a paid call. The turns that really are hard get exactly the same treatment: a caller who answers a demo offer with "Haan, par abhi dukaan par bahut bheed hai, shaam ko saat baje karao" (yes, but the shop is packed right now, make it seven this evening), or one who says in the same breath which colour they ordered and which colour arrived.
+If a voice agent sends every turn to an LLM, each of those easy turns costs a few hundred milliseconds and a paid call. The turns that really are hard get exactly the same treatment: a caller who answers a demo offer with "Haan, par abhi dukaan par bahut bheed hai, shaam ko saat baje karao" (yes, but the shop is packed right now, make it seven this evening), or one who says in the same breath which colour they ordered and which colour arrived.
 
 One way to cut that cost is to put a small model in front, let it take the turns it is sure about and pass the rest on. Cascades and routers of this kind have been studied for general LLM queries, for example in [FrugalGPT](https://arxiv.org/abs/2305.05176) and [RouteLLM](https://arxiv.org/abs/2406.18665). In a phone call the small model has a narrower job: pick one of a few given answers and say how sure it is, which is what decision models such as Jev, Laya and Vega do. It also has to do that in the way people in India actually speak on the phone: Hindi typed in English letters, Tamil with English in the middle of a sentence, a "hello, can you hear me?" in place of an answer.
 
@@ -24,13 +24,9 @@ This post is about the open decision model I built on Sarvam-1 for Indian-langua
 
 The post follows the order in which things happened: seeing where existing models stand, building the model, testing it, putting it in a voice agent and what I learned along the way.
 
-## What a decision model does
+## How the decision model is used
 
-A useful picture is a new call-centre agent in their first week. The team lead tells them: answer the routine questions yourself, and when you are not sure, put the caller on hold and ask me. A good new agent is valuable for two reasons. They handle most calls without help, and they know which calls they should not handle alone.
-
-In the system described here, a decision model plays the new agent and a large language model (LLM) plays the team lead. The LLM handles unusual cases better, but each turn it takes is a separate API call, about 0.4 seconds in my tests, against a few tens of milliseconds for the small model on a GPU.
-
-Concretely, at each turn the decision model receives three things: the recent conversation, a question such as "Did the caller confirm the delivery address?" and a short list of possible answers (yes, no, the caller asked something else, and so on). It returns one answer and a **confidence**, a number between 0 and 1 for how sure it is. If the model says 0.99, the system acts. If it says 0.6, the turn goes to the LLM. Released decision models expose the same idea in their outputs, as a calibrated probability, an abstain flag or a probability of acting.
+At each turn the decision model reads the recent conversation, a question such as "Did the caller confirm the delivery address?" and a short list of options (yes, no, the caller asked something else, and so on), and returns one option with a confidence. Above a cutoff the agent acts on it; below it, the turn goes to the LLM, which handles unusual cases better but costs about 0.4 seconds per call in my tests, against a few tens of milliseconds for the small model on a GPU. Released decision models expose the same idea as a calibrated probability, an abstain flag or a probability of acting.
 
 That only works if a confidence of 0.99 actually means "right 99 times in 100". Much of this project was about earning that.
 
@@ -57,6 +53,8 @@ Besides the right answer, the model is trained on pairs of near-identical replie
 Four call flows (insurance claims, travel bookings, support for a children's learning app and vehicle servicing) never appear in training, and neither do several families of business rules. I read Hindi, Bengali and Assamese, so I also kept Assamese out of training entirely. That gives a test on a language the model has never seen in a call, and one whose mistakes I can read for myself.[^assamese]
 
 Alongside accuracy I tracked **confident mistakes**: wrong answers given with at least 0.95 confidence. In a system that acts on high confidence, these are the errors that are most easily overlooked, so every version was checked to keep them low.
+
+All of these test sets are synthetic: generated and labelled by the same LLM pipeline as the training data, though drawn from flows, rule families and a language kept out of training. The numbers below are best read as an upper bound for real traffic. On my own live test calls, where the questions and options were new to the model, it was confident enough to answer the bot's question on its own in 12 of 69 turns and passed the rest to the LLM.
 
 ## How well it decides
 
@@ -94,7 +92,7 @@ I compared a voice agent that sends every turn to `sarvam-105b-conversations`, t
 
 ![2,700 test turns covering every kind of question. The third row was chosen on separate calibration calls and applied once; the fourth was tuned on half of the test turns and scored on the other half.]({{ site.baseurl }}/assets/img/decision-llm.png)
 
-The LLM received the same conversation, question and options as this model, with no examples, at temperature 0.[^llm] On the replies it decides alone, the model is right 99.4% of the time, against 98.1% for the LLM on the same turns. Across all replies the LLM is slightly ahead (97.2% to 96.2%), which is why the uncertain ones go to it. The LLM is also stronger on the translated everyday decision tasks (95.8% to 87.0%) and on unseen business rules (94.0% to 87.0%). On the turns in this comparison, the small model is stronger at spotting when a caller needs a person (94.7% to 87.7%), at judging urgency (89.0% to 85.5%) and at reading mood (80.7% to 78.0%), and it is far faster. Combining the two beats either one.
+The LLM received the same conversation, question and options as this model, with no examples, at temperature 0. The test labels come from the same pipeline as this model's training data, which favours this model.[^llm] On the replies it decides alone, the model is right 99.4% of the time, against 98.1% for the LLM on the same turns. Across all replies the LLM is slightly ahead (97.2% to 96.2%), which is why the uncertain ones go to it. The LLM is also stronger on the translated everyday decision tasks (95.8% to 87.0%) and on unseen business rules (94.0% to 87.0%). On the turns in this comparison, the small model is stronger at spotting when a caller needs a person (94.7% to 87.7%), at judging urgency (89.0% to 85.5%) and at reading mood (80.7% to 78.0%), and it is far faster. Combining the two beats either one.
 
 ![Median time for one pass of this model over the options, against the LLM's median response time over the API in my tests. The accuracy figures in this post average two passes with the options in different orders, which took 1.8 times as long as one pass on my laptop.]({{ site.baseurl }}/assets/img/decision-latency.png)
 
@@ -126,14 +124,14 @@ Two versions with the same accuracy can behave very differently in a voice agent
 ### Learn from earlier models, not from their certainty
 {:.no_toc}
 
-Each version also learns from the answers of earlier versions, a standard technique called [distillation](https://arxiv.org/abs/1503.02531) in which the earlier models act as teachers. Which teachers to use turned out to matter a lot, because a teacher that is very sure of itself passes that certainty on, including on the cases it gets wrong. Two training runs on the same data, one learning from more confident earlier versions (average top confidence 0.88) and one from calmer ones (0.78), made the difference clear.
+Each version also learns from the answers of earlier versions, through [distillation](https://arxiv.org/abs/1503.02531), with the earlier models as teachers. Which teachers to use turned out to matter a lot, because a teacher that is very sure of itself passes that certainty on, including on the cases it gets wrong. Two training runs on the same data, one learning from more confident earlier versions (average top confidence 0.88) and one from calmer ones (0.78), made the difference clear.
 
 ![Wrong answers given with at least 0.95 confidence, on 1,011 questions about business rules that never appear in training. The calmer teachers gave fewer confident mistakes and slightly higher accuracy.]({{ site.baseurl }}/assets/img/decision-teachers.png)
 
 ### Confidence needs enough examples to be tuned
 {:.no_toc}
 
-A model's raw confidence is rarely exactly right. If its answers at 0.9 confidence turn out right only 80% of the time, the scores need to be scaled down to match. That adjustment is learned after training, from examples the model has not trained on, and it is only as good as the number of examples behind it. A kind of question now gets its own adjustment only when it has at least 150 such examples; otherwise it shares one with similar questions. With that rule, on a fresh set of 1,080 urgency questions the model was right 89.3% of the time and made no confident mistakes.
+Confidence is rescaled after training, separately for each kind of question, on examples the model has not trained on, and the rescaling is only as good as the number of examples behind it. A kind of question now gets its own adjustment only when it has at least 150 such examples; otherwise it shares one with similar questions. With that rule, on a fresh set of 1,080 urgency questions the model was right 89.3% of the time and made no confident mistakes.
 
 ### Set the hand-off rules on the calls you will actually serve
 {:.no_toc}
@@ -160,7 +158,7 @@ Before it replaces the current model, two things are still being tuned: its conf
 **Working well today**
 
 - Reads 96 of every 100 caller replies correctly, across 10 Indian languages and English, in native script, romanized and code-mixed text.
-- Knows when it is sure: it decides most replies on its own, at better than 99% accuracy.
+- Knows when it is sure: on the test sets it decides most replies on its own, at better than 99% accuracy, and on unfamiliar live questions it passes them on.
 - Makes Sarvam's conversational LLM more accurate while taking over most of its calls.
 - Tens of milliseconds per decision on a single GPU.
 - The highest score among the open models I tested on translated everyday decision tasks.
@@ -181,4 +179,4 @@ I started out asking how well decision models handle Indian languages, and wheth
 [^bench]: For Belebele and IndicXNLI, 200 items per language, comparing each model's Indian-language average with its English score after removing items whose machine translation was broken. For JevBench, the same 1,295 native-script items for every model, keeping a translation only if the right answer did not change; the questions and options stay in English, and each released model was called zero-shot through its own package or API.
 [^assamese]: Assamese call turns never appear in training. A short Assamese word list is part of the short-replies-in-context task, and Sarvam-1 itself was not trained on Assamese.
 [^cutoff]: "At least 99%" means the 95% lower confidence bound (Clopper–Pearson) on a separate calibration set is at or above 99%. About 300 correct answers in a row are needed before that bound can reach 99%, which is why cutoffs are set per kind of question and not per step of a call.
-[^llm]: Every answer the LLM gave was valid. The test labels come from the same LLM-written, LLM-checked process as the training data, which may favour a model trained on that data. With hand-off rules chosen on calibration calls, 98 turns were gained and 59 lost against the LLM alone (p = 0.002). The "tuned on calls like the test calls" row was chosen on half of the test turns and scored on the other half, then swapped; over three random splits it gave 94.7% to 95.0% accuracy with the LLM on 21% to 23% of turns.
+[^llm]: Every answer the LLM gave was valid. With hand-off rules chosen on calibration calls, 98 turns were gained and 59 lost against the LLM alone (p = 0.002). The "tuned on calls like the test calls" row was chosen on half of the test turns and scored on the other half, then swapped; over three random splits it gave 94.7% to 95.0% accuracy with the LLM on 21% to 23% of turns.
